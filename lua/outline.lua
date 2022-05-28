@@ -187,8 +187,7 @@ function M.set_buffer(win, buf, opt)
   local cursor_pos = api.nvim_win_get_cursor(M.main_win)
   cursor_pos[1] = cursor_pos[1] - 1
   local lines = api.nvim_buf_get_lines(buf, cursor_pos[1], -1, false)[1]
-  -- local liness = api.nvim_buf_get_lines(buf, 1, -1, false)[1]
-  local buffer = tonumber(lines:split("")[1])
+  local buffer = tonumber(lines:split(" ")[1])
 
   --check if window is split
   if opt == 'window' then
