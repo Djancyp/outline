@@ -14,6 +14,7 @@ local colors = {
   red = "#E16071",
   blue = "#649CD9",
   yellow = "#F2AC42",
+  grey = "#868B8E",
 }
 
 function M.setup(opt)
@@ -55,7 +56,7 @@ function M.setup(opt)
 
         local changed_icon_color = "FileIconColor"
         local changed_icon = ""
-        api.nvim_set_hl(0, changed_icon_color, { fg = colors.blue })
+        api.nvim_set_hl(0, changed_icon_color, { fg = colors.grey })
         if vim.bo.modified then
           api.nvim_set_hl(0, changed_icon_color, { fg = colors.green })
         end
