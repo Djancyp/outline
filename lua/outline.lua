@@ -6,7 +6,7 @@
 local api = vim.api
 local cmd = vim.api.nvim_create_autocmd
 local ui = api.nvim_list_uis()[1]
-
+require 'split'
 local M = {}
 
 local colors = {
@@ -152,7 +152,6 @@ function M.list_buffers()
   local buffers = api.nvim_list_bufs()
   local buffer_names = {}
   table.sort(buffers)
-  local count = 0
   local current_buffer = api.nvim_get_current_buf()
   for _, buffer in ipairs(buffers) do
     --check if buffers are avtive
@@ -160,7 +159,6 @@ function M.list_buffers()
       local buffer_name = api.nvim_buf_get_name(buffer)
       -- check if buffer has changed
       if buffer_name == "" or nil then goto continue end
-      count = count + 1
 
       local buffer_changed = api.nvim_buf_get_option(buffer, 'modified')
       local buffer_id = api.nvim_buf_get_number(buffer)
@@ -169,8 +167,6 @@ function M.list_buffers()
         active_buff = ""
       end
       local buffer_icon = buffer_changed and '﨣' or ''
-      local color = 'color'
-      api.nvim_set_hl(0, color, { fg = colors.green })
 
       local max_width = M.main_win_width - #buffer_name - 20
       local buffer_name_width = string.len(buffer_name)
@@ -189,8 +185,11 @@ end
 
 function M.set_buffer(win, buf, opt)
   local cursor_pos = api.nvim_win_get_cursor(M.main_win)
-  local lines = api.nvim_buf_get_lines(buf, cursor_pos[1] - 1, -1, false)[1]
-  local buffer = tonumber(lines:split(' ')[1])
+  cursor_pos[1] = cursor_pos[1] - 1
+  local lines = api.nvim_buf_get_lines(buf, cursor_pos[1], -1, false)[1]
+  -- local liness = api.nvim_buf_get_lines(buf, 1, -1, false)[1]
+  local buffer = tonumber(lines:split("")[1])
+
   --check if window is split
   if opt == 'window' then
     api.nvim_win_set_buf(win, buffer)
