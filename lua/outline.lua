@@ -1,7 +1,6 @@
 --TODO:
 --  * Add icon colors
 --  * Add sort options
---  * Add preview mode
 --  * Add Options for configuring the outline
 local api = vim.api
 local cmd = vim.api.nvim_create_autocmd
@@ -24,10 +23,20 @@ function M.setup(opt)
   M.main_win_height = 20
   M.main_win_style = "minimal"
   M.main_win_relavent = "win"
-  M.main_win_border = 'single'
+  M.main_win_border = 'double'
   M.main_col = ui.width / 2 - M.main_win_width / 2
   M.main_row = ui.height / 2 - M.main_win_height / 2
 
+  -- Preview mode window
+  M.preview_win = nil
+  M.preview_buf = nil
+  M.preview_win_width = ui.width / 2
+  M.preview_win_height = ui.height / 2
+  M.preview_win_style = "minimal"
+  M.preview_win_relavent = "win"
+  M.preview_win_border = 'double'
+  M.preview_col = M.main_win_width / 2 - M.preview_win_width / 2
+  M.preview_row = M.main_win_height / 2 - M.preview_win_height / 2
 
   local ignore_filetypes = {
     "telescope",
@@ -99,12 +108,57 @@ function M.open()
   end
 end
 
+function M.openPreview(buf)
+  M.preview_buf = api.nvim_create_buf(false, true)
+  -- rount float to int
+  M.preview_win_width = math.floor(M.preview_win_width)
+  M.preview_win_height = math.floor(M.preview_win_height)
+  M.preview_win = api.nvim_open_win(M.preview_buf, false, {
+    relative = M.preview_win_relavent,
+    width = M.preview_win_width,
+    height = M.preview_win_height,
+    style = M.preview_win_style,
+    row = M.preview_row,
+    col = M.preview_col,
+    anchor = 'NW',
+    border = M.preview_win_border
+  })
+  local cursor_pos = api.nvim_win_get_cursor(M.main_win)
+  cursor_pos[1] = cursor_pos[1] - 1
+  local lines = api.nvim_buf_get_lines(buf, cursor_pos[1], -1, false)[1]
+  local buffer = tonumber(lines:split(" ")[1])
+  api.nvim_win_set_buf(M.preview_win, buffer)
+  api.nvim_set_current_win(M.preview_win)
+  -- not modifiable
+  api.nvim_buf_set_option(M.preview_buf, 'modifiable', false)
+  -- attach key to quit preview
+  M.setPreviewKeys(M.preview_buf)
+end
+
+function M.setPreviewKeys(buf)
+
+  api.nvim_buf_set_keymap(0, 'n', 'q', ':lua require"outline".close_preview()<CR>',
+    { nowait = true, noremap = true, silent = true })
+
+end
+
+function M.close_preview()
+  api.nvim_win_close(M.preview_win, false)
+  api.nvim_buf_delete(M.preview_buf, {})
+  M.preview_win = nil
+  M.preview_buf = nil
+  api.nvim_set_current_win(M.main_win)
+end
+
 function M.close()
   if M.main_win then
     api.nvim_win_close(M.main_win, false)
     api.nvim_buf_delete(M.main_buf, {})
     M.main_win = nil
     M.main_buf = nil
+    if M.preview_buf ~= nil then
+      M.close_preview()
+    end
   end
 end
 
@@ -118,6 +172,9 @@ function M.setKeys(win, buf)
     { nowait = true, noremap = true, silent = true })
   api.nvim_buf_set_keymap(buf, 'n', 'v',
     string.format([[:<C-U>lua require'outline'.set_buffer(%s,%s, 'vsplit', vim.v.count)<CR>]], win, buf),
+    { nowait = true, noremap = true, silent = true })
+  api.nvim_buf_set_keymap(buf, 'n', 'P',
+    string.format([[:<C-U>lua require'outline'.openPreview(%s)<CR>]], buf),
     { nowait = true, noremap = true, silent = true })
   api.nvim_buf_set_keymap(buf, 'n', 'D',
     string.format([[:<C-U>lua require'outline'.close_buffer(%s)<CR>]], buf),
@@ -174,7 +231,7 @@ function M.list_buffers()
       if buffer_name_width > max_width then
         buffer_name = "..." .. string.sub(buffer_name, 1 - max_width)
       end
-      buffer_names[#buffer_names + 1] = string.format("%s %s %s %s", buffer_id, buffer_name, active_buff,buffer_icon)
+      buffer_names[#buffer_names + 1] = string.format("%s %s %s %s", buffer_id, buffer_name, active_buff, buffer_icon)
       ::continue::
     end
   end
@@ -209,6 +266,9 @@ function M.close_buffer(buf)
   local buffer = tonumber(lines:split(' ')[1])
   -- close buffer
   vim.cmd(string.format('bd %s', buffer))
+  -- reset the buffer loader
+  M.close()
+  M.open()
 end
 
 return M
