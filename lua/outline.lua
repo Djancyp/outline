@@ -37,6 +37,7 @@ function M.setup(opt)
   M.preview_win_border = 'double'
   M.preview_col = M.main_win_width / 2 - M.preview_win_width / 2
   M.preview_row = M.main_win_height / 2 - M.preview_win_height / 2
+  M.custom_keys = {}
 
   local ignore_filetypes = {
     "telescope",
@@ -79,7 +80,7 @@ function M.setup(opt)
 end
 
 function M.open()
-  local back_win = api.nvim_get_current_win()
+  M.back_win = api.nvim_get_current_win()
   if not M.main_buf and not M.main_win then
     M.main_buf = api.nvim_create_buf(false, true)
     M.main_win = api.nvim_open_win(M.main_buf, false, {
@@ -93,7 +94,8 @@ function M.open()
       border = M.main_win_border
     })
     M.build_win()
-    M.setKeys(back_win, M.main_buf)
+    M.setKeys(M.back_win, M.main_buf)
+    M.add_custom_keys()
   else
     xpcall(function()
       api.nvim_win_close(M.main_win, false)
@@ -106,6 +108,20 @@ function M.open()
       M.open()
     end)
   end
+end
+
+function M.add_custom_keys()
+  for k, v in pairs(M.custom_keys) do
+    print(vim.inspect(v))
+    api.nvim_buf_set_keymap(M.main_buf, 'n', v.key,
+      string.format([[:<C-U>lua require'outline'.set_saved_buffer(%s,%s)<CR>]], M.back_win, tonumber(v.buffer)),
+      { nowait = true, noremap = true, silent = true })
+  end
+end
+
+function M.set_saved_buffer(win, buf)
+  api.nvim_win_set_buf(win, tonumber(buf))
+  M.close()
 end
 
 function M.openPreview(buf)
@@ -136,10 +152,8 @@ function M.openPreview(buf)
 end
 
 function M.setPreviewKeys(buf)
-
   api.nvim_buf_set_keymap(0, 'n', 'q', ':lua require"outline".close_preview()<CR>',
     { nowait = true, noremap = true, silent = true })
-
 end
 
 function M.close_preview()
@@ -178,6 +192,9 @@ function M.setKeys(win, buf)
     { nowait = true, noremap = true, silent = true })
   api.nvim_buf_set_keymap(buf, 'n', 'D',
     string.format([[:<C-U>lua require'outline'.close_buffer(%s)<CR>]], buf),
+    { nowait = true, noremap = true, silent = true })
+  api.nvim_buf_set_keymap(buf, 'n', 'B',
+    string.format([[:<C-U>lua require'outline'.open_input_window(%s)<CR>]], buf),
     { nowait = true, noremap = true, silent = true })
   -- Navigation keymaps
   api.nvim_buf_set_keymap(buf, 'n', 'q', ':lua require"outline".close()<CR>',
@@ -246,10 +263,9 @@ function M.set_buffer(win, buf, opt)
   cursor_pos[1] = cursor_pos[1] - 1
   local lines = api.nvim_buf_get_lines(buf, cursor_pos[1], -1, false)[1]
   local buffer = tonumber(lines:split(" ")[1])
-
   --check if window is split
   if opt == 'window' then
-    api.nvim_win_set_buf(win, buffer)
+    api.nvim_win_set_buf(win, tonumber(buffer))
   elseif opt == 'hsplit' then
     api.nvim_command('vsplit')
     api.nvim_win_set_buf(api.nvim_get_current_win(), buffer)
@@ -269,6 +285,70 @@ function M.close_buffer(buf)
   -- reset the buffer loader
   M.close()
   M.open()
+end
+
+function M.open_input_window()
+  M.input_buf = api.nvim_create_buf(false, true)
+  M.input_win = api.nvim_open_win(M.input_buf, false, {
+    relative = 'editor',
+    width = 30,
+    height = 1,
+    row = api.nvim_win_get_height(M.main_win) - 1,
+    col = api.nvim_win_get_width(M.main_win) / 2,
+    style = 'minimal',
+    border = "single"
+  })
+  M.set_input_keys(M.input_buf)
+  -- turn off lsp for this buffer
+  api.nvim_buf_set_option(M.input_buf, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
+
+  api.nvim_win_set_option(M.input_win, 'cursorline', true)
+  api.nvim_set_current_win(M.input_win)
+  api.nvim_win_set_cursor(M.input_win, { 1, 0 })
+  api.nvim_command('startinsert')
+  api.nvim_buf_set_option(M.input_buf, 'modifiable', true)
+end
+
+function M.set_input_keys(buf)
+
+  api.nvim_buf_set_keymap(buf, 'i', '<CR>', '<Esc>:lua require"outline".bind_key_to_buffer()<CR>',
+    { nowait = true, noremap = true, silent = true })
+  api.nvim_buf_set_keymap(buf, 'i', '<C-c>', '<Esc>:lua require"outline".close_input_window()<CR>',
+    { nowait = true, noremap = true, silent = true })
+  api.nvim_buf_set_keymap(buf, 'i', 'q', '<Esc>:lua require"outline".close_input_window()<CR>',
+    { nowait = true, noremap = true, silent = true })
+  api.nvim_buf_set_keymap(buf, 'i', '<Esc>', '<Esc>:lua require"outline".close_input_window()<CR>',
+    { nowait = true, noremap = true, silent = true })
+end
+
+function M.close_input_window()
+  print('close input window')
+  api.nvim_win_close(M.input_win, true)
+  M.input_buf = nil
+  M.input_win = nil
+  -- M.close()
+  -- M.open()
+end
+
+function M.bind_key_to_buffer()
+  --get current line from window
+  local main_cursor_pos = api.nvim_win_get_cursor(M.main_win)
+  main_cursor_pos[1] = main_cursor_pos[1] - 1
+  local lines = api.nvim_buf_get_lines(M.main_buf, main_cursor_pos[1], -1, false)[1]
+  local buffer = tonumber(lines:split(" ")[1])
+  local cursor_pos = api.nvim_win_get_cursor(M.input_win)
+  local key = api.nvim_buf_get_lines(M.input_buf, cursor_pos[1] - 1, -1, false)[1]
+  api.nvim_buf_set_keymap(M.main_buf, 'n', key,
+    string.format([[:<C-U>lua require'outline'.set_buffer(%s,%s, 'window', vim.v.count)<CR>]], M.back_win, M.main_buf),
+    { nowait = true, noremap = true, silent = true })
+  -- add to custom keybindings
+  M.custom_keys[#M.custom_keys + 1] = {
+    key = key,
+    buffer = buffer,
+    window = M.back_win,
+    opt = 'window'
+  }
+  M.close_input_window()
 end
 
 return M
