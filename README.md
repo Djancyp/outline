@@ -1,7 +1,7 @@
 # Outline ( Another Nvim Buffer Management with Winbar )
 
 Outline is a simple(not so simple) Nvim buffer management plugin written in Lua.
- ![](https://raw.githubusercontent.com/Djancyp/outline/main/image/outline.gif)
+ ![](https://github.com/Djancyp/outline/blob/main/images/outline.gif)
 # What you will get with this plugin. 
 
 - Uses Nvim winbar to show buffer name and file change indicator.
