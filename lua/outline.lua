@@ -112,7 +112,6 @@ end
 
 function M.add_custom_keys()
   for k, v in pairs(M.custom_keys) do
-    print(vim.inspect(v))
     api.nvim_buf_set_keymap(M.main_buf, 'n', v.key,
       string.format([[:<C-U>lua require'outline'.set_saved_buffer(%s,%s)<CR>]], M.back_win, tonumber(v.buffer)),
       { nowait = true, noremap = true, silent = true })
@@ -237,6 +236,7 @@ function M.list_buffers()
 
       local buffer_changed = api.nvim_buf_get_option(buffer, 'modified')
       local buffer_id = api.nvim_buf_get_number(buffer)
+
       local active_buff = ""
       if buffer_id == current_buffer then
         active_buff = ""
@@ -247,6 +247,11 @@ function M.list_buffers()
       local buffer_name_width = string.len(buffer_name)
       if buffer_name_width > max_width then
         buffer_name = "..." .. string.sub(buffer_name, 1 - max_width)
+      end
+      for b, bind in pairs(M.custom_keys) do
+        if bind.buffer == buffer_id then
+          buffer_name = string.format("%s %s", bind.key .. " ", buffer_name)
+        end
       end
       buffer_names[#buffer_names + 1] = string.format("%s %s %s %s", buffer_id, buffer_name, active_buff, buffer_icon)
       ::continue::
@@ -291,17 +296,16 @@ function M.open_input_window()
   M.input_buf = api.nvim_create_buf(false, true)
   M.input_win = api.nvim_open_win(M.input_buf, false, {
     relative = 'editor',
-    width = 30,
+    width = 10,
     height = 1,
-    row = api.nvim_win_get_height(M.main_win) - 1,
-    col = api.nvim_win_get_width(M.main_win) / 2,
+    row = ui.height / 2 - 1,
+    col = ui.width / 2 - 10 / 2,
     style = 'minimal',
     border = "single"
   })
   M.set_input_keys(M.input_buf)
   -- turn off lsp for this buffer
   api.nvim_buf_set_option(M.input_buf, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
-
   api.nvim_win_set_option(M.input_win, 'cursorline', true)
   api.nvim_set_current_win(M.input_win)
   api.nvim_win_set_cursor(M.input_win, { 1, 0 })
@@ -322,12 +326,9 @@ function M.set_input_keys(buf)
 end
 
 function M.close_input_window()
-  print('close input window')
   api.nvim_win_close(M.input_win, true)
   M.input_buf = nil
   M.input_win = nil
-  -- M.close()
-  -- M.open()
 end
 
 function M.bind_key_to_buffer()
@@ -342,6 +343,24 @@ function M.bind_key_to_buffer()
     string.format([[:<C-U>lua require'outline'.set_buffer(%s,%s, 'window', vim.v.count)<CR>]], M.back_win, M.main_buf),
     { nowait = true, noremap = true, silent = true })
   -- add to custom keybindings
+  --  check if buffer is already in custom keybindings
+  --  if not add its
+  for _, v in pairs(M.custom_keys) do
+    if v.key == key then
+      vim.notify('Key already exists')
+      api.nvim_command('startinsert')
+      return
+    else if v.buffer == buffer then
+        v.key = key
+        vim.notify('Buffer binding changed.')
+        M.close_input_window()
+        M.close()
+        M.open()
+
+        return
+      end
+    end
+  end
   M.custom_keys[#M.custom_keys + 1] = {
     key = key,
     buffer = buffer,
@@ -349,6 +368,9 @@ function M.bind_key_to_buffer()
     opt = 'window'
   }
   M.close_input_window()
+  vim.notify('Buffer binding added.')
+  M.close()
+  M.open()
 end
 
 return M
