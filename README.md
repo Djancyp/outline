@@ -8,14 +8,15 @@ Outline is a simple(not so simple) Nvim buffer management plugin written in Lua.
 // image 
 - Buffer management ui.
   - Buffer switch.
-  ![Buffer main](/images/outline-main.png)
   - Buffer status.
-  ![Status line](/images/winbar.png)
   - Buffer close.
   - Buffer Preview.
-  ![Previw](/images/preview.png)
   - Buffer bind shortcut key.
-  ![Key binding](/images/bind.png)
+
+- ![Buffer main](/images/outline-main.png)
+- ![Status line](/images/winbar.png)
+- ![Previw](/images/preview.png)
+- ![Key binding](/images/bind.png)
 
 ## requirements
 - Neovim Nightly ≥ v0.8 - Winbar support
