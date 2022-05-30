@@ -8,6 +8,7 @@ Outline is a simple(not so simple) Nvim buffer management plugin written in Lua.
 // image 
 - Buffer management ui.
   - Buffer switch.
+  ![Buffer main](/images/outline-main.png)
   - Buffer status.
   - Buffer close.
   - Buffer Preview.
