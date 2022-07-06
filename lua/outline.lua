@@ -9,14 +9,6 @@ local popup = require("plenary.popup")
 require 'split'
 local M = {}
 
-local colors = {
-    green = "#66EB73",
-    red = "#E16071",
-    blue = "#649CD9",
-    yellow = "#F2AC42",
-    grey = "#868B8E",
-}
-
 function M.setup(opt)
     M.main_win = nil
     M.main_buf = nil
@@ -40,14 +32,6 @@ function M.setup(opt)
     M.preview_row = M.main_win_height / 2 - M.preview_win_height / 2
     M.custom_keys = {}
 
-    local ignore_filetypes = {
-        "telescope",
-        "packer",
-        "dashboard",
-        "help",
-        "neo-tree",
-        "toggleterm"
-    }
 end
 
 function M.open()
@@ -262,6 +246,7 @@ end
 
 function M.open_input_window()
     M.input_buf = api.nvim_create_buf(false, true)
+    local ok, result = pcall(vim.api.nvim_buf_get_var, M.input_buf, 'lsp_enabled')
     local borderchars = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" }
     local win_id, win = popup.create(M.input_buf, {
         title = "Input Keybinding:",
